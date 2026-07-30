@@ -1,0 +1,19 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nodejs-deployment
+spec:
+  selector:
+    matchLabels:
+      app: nodejs-tttapp
+  replicas: 3
+  template:
+    metadata:
+      labels:
+        app: nodejs-tttapp
+    spec:
+      containers:
+      - name: nodejs-tttapp
+        image: hodaahmed18/tech610-tttapp:1.2.0-amd64
+        ports:
+        - containerPort: 3000
