@@ -54,6 +54,22 @@ A cluster is a set of machines, called nodes, that run container apps. A cluster
 
 The core relationship to remember, the control plane decides and instructs, the data plane, the worker nodes, actually does the work.
 
+```
+                Control plane (master node)
+   +---------------------------------------------------+
+   |  API server   |  Scheduler  |  Controller manager  |
+   |                     etcd                           |
+   +---------------------------------------------------+
+                     |                    |
+       (schedules workloads onto worker nodes)
+                     |                    |
+     +----------------------+   +----------------------+
+     |     Worker node 1    |   |     Worker node 2     |
+     |   [Pod]      [Pod]   |   |   [Pod]      [Pod]    |
+     |  kubelet, kube-proxy |   |  kubelet, kube-proxy  |
+     +----------------------+   +----------------------+
+```
+
 ## The cluster setup
 
 - A cluster is made up of at least one master node
@@ -70,9 +86,9 @@ The core relationship to remember, the control plane decides and instructs, the 
 - You only pay for one VM per worker node
 
 **EKS (AWS) and GKE (GCP):**
-- Both charge for the master node too, around 10p per hour
+- Both charge for the master node too, unlike AKS
 
-This is a genuine, concrete cost difference worth remembering, AKS's free control plane is a real advantage if already working within Azure's ecosystem.
+This is a genuine, concrete difference worth remembering, AKS's free control plane is a real advantage if already working within Azure's ecosystem.
 
 **Minikube:**
 - Both master and worker nodes run together on a single VM
@@ -82,7 +98,7 @@ This is a genuine, concrete cost difference worth remembering, AKS's free contro
 
 ## Managed vs self-managed, the tradeoff
 
-Using a managed service means the master node is automatically managed for you, less operational burden, less to manage yourself. On EKS and GKE, this convenience has to be paid for directly, around 10p per hour for the master node, AKS's master node is free. Running a cluster entirely yourself gives full control, but the full responsibility for keeping the control plane itself running and healthy falls on you. The same shape of tradeoff as every build-it-yourself vs use-the-managed-thing decision made throughout this course.
+Using a managed service means the master node is automatically managed for you, less operational burden, less to manage yourself. On EKS and GKE, this convenience is charged for directly, AKS's master node is free. Running a cluster entirely yourself gives full control, but the full responsibility for keeping the control plane itself running and healthy falls on you. The same shape of tradeoff seen elsewhere, build it yourself versus use the managed thing.
 
 ## Kubernetes objects
 
@@ -106,7 +122,7 @@ A pod is disposable and temporary by design. It can be destroyed and recreated a
 
 ## Maintained images
 
-Official, actively maintained base images, like node:20 or mongo:8.0, both already used in this course, receive regular security patches and updates from a trusted source, rather than being built from scratch or left to grow outdated.
+Official, actively maintained base images, like node:20 or mongo:8.0, both used in earlier Docker work, receive regular security patches and updates from a trusted source, rather than being built from scratch or left to grow outdated.
 
 - Benefits: stronger security, more reliability, less ongoing maintenance burden
 - Tradeoffs: less control over exactly what is included inside the image, and potential extra size if the maintained image contains things not actually needed
@@ -200,33 +216,31 @@ curl http://<minikube-ip>:30001
 ```
 Returned the actual nginx homepage HTML, confirming deployment, replica management, and networking all working correctly together.
 
-## Changing replica count while the cluster is live, three ways
+## Changing replica count while a cluster is live, three ways
 
-Demonstrated live, three different ways to change how many replicas are running, without deleting and recreating anything from scratch:
+Three different ways to change how many replicas are running, without deleting and recreating anything from scratch, taught in this session:
 
 **1. Edit the live deployment directly:**
 ```bash
 kubectl edit deploy nginx-deployment
 ```
-Opens the deployment's current configuration in an editor. Saving the file applies the change immediately, in this case increasing replicas from 3 up to 4, then further.
+Opens the deployment's current configuration in an editor. Saving the file applies the change immediately.
 
 **2. Scale via a direct command:**
 ```bash
-kubectl scale --current-replicas=5 --replicas=6 deployment/nginx-deployment
+kubectl scale --current-replicas=3 --replicas=4 deployment/nginx-deployment
 ```
 `--current-replicas` acts as a safety check, the command only proceeds if the deployment's actual current count matches what is specified, preventing an accidental scale based on stale information. `--replicas` sets the new target count.
 
 **3. Edit the YAML file itself, then reapply:**
-Changed `replicas: 5` directly inside `nginx-deploy.yml`, then ran:
+Change `replicas:` directly inside `nginx-deploy.yml`, then run:
 ```bash
 kubectl apply -f nginx-deploy.yml
 ```
-Kubernetes compares the file's declared state against the cluster's actual current state and adjusts accordingly, the same declarative principle as everything else in Kubernetes and Terraform.
+Kubernetes compares the file's declared state against the cluster's actual current state and adjusts accordingly, the same declarative principle used everywhere else in Kubernetes.
 
-## Rolling updates in action
+## Rolling updates
 
-Also demonstrated live, changing the container image inside `nginx-deploy.yml` from `daraymonsta/nginx-257:dreamteam` to a different image, `daraymonsta/nginx-610-ramon:1.0`, then reapplying the file.
+Changing the container image inside `nginx-deploy.yml` to a different image or tag, then reapplying the file, triggers a rolling update. Running `kubectl get all` immediately afterward during this kind of change shows two separate ReplicaSets existing at the same time briefly, the original one and a new one matching the updated image, with new pods coming up as `Running` or `Pending` while old pods show `Terminating`.
 
-Running `kubectl get all` immediately afterward showed two separate ReplicaSets existing at the same time, the original one and a brand new one matching the updated image, with new pods showing `Running` or `Pending` and old pods showing `Terminating`. This is a rolling update happening in real time, Kubernetes does not delete every old pod and then start new ones, it brings new pods up gradually, only phasing out old ones once replacements are ready, meaning the application stays available throughout the entire update rather than having any period of total downtime. This is the direct, hands-on version of the "rolling updates and rollbacks" benefit listed earlier.
-
-
+This is what a rolling update looks like in practice, Kubernetes does not delete every old pod and then start new ones, it brings new pods up gradually, only phasing out old ones once replacements are ready, meaning the application stays available throughout the entire update rather than having any period of total downtime. This is the direct, hands-on version of the rolling updates and rollbacks benefit listed earlier.
