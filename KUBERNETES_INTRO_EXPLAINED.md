@@ -77,10 +77,6 @@ The core relationship to remember, the control plane decides and instructs, the 
 - Production wants a multi-node setup, multiple workers, so no single machine failing takes the whole system down
 - Dev and testing can use a single-node setup, one worker node, fine for learning but genuinely fragile
 
-## Managed vs self-managed, the tradeoff
-
-Using a managed service means the master node is automatically managed for you, less operational burden, less to manage yourself. On EKS and GKE, this convenience is charged for directly, AKS's master node is free. Running a cluster entirely yourself gives full control, but the full responsibility for keeping the control plane itself running and healthy falls on you. The same shape of tradeoff seen elsewhere, build it yourself versus use the managed thing.
-
 ## Kubernetes objects
 
 - **Deployment**, contains a ReplicaSet and Pods, this is usually the object actually interacted with directly, rather than managing Pods or ReplicaSets by hand. Handles rolling updates and rollbacks.
